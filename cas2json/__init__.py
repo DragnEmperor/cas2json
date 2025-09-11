@@ -1,1 +1,6 @@
-__version__ = "0.0.1"
+from cas2json.cams.processor import parse_cams_pdf
+from cas2json.nsdl.processor import parse_nsdl_pdf
+
+__all__ = ["parse_cams_pdf", "parse_nsdl_pdf"]
+
+__version__ = "0.1.0"
