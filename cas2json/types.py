@@ -1,8 +1,22 @@
+from collections.abc import Generator
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
 
-from cas2json.enums import CASFileType, FileType, TransactionType
+from pymupdf import Rect
+
+from cas2json.constants import HOLDINGS_CASHFLOW
+from cas2json.enums import FileType, FileVersion, TransactionType
+
+WordData = tuple[Rect, str]
+DocumentData = list["PageData"]
+LineData = Generator[tuple[str, list[WordData]]]
+
+
+@dataclass(slots=True, frozen=True)
+class PageData:
+    lines_data: LineData
+    headers_data: dict[str, Rect]
 
 
 @dataclass(slots=True)
@@ -29,6 +43,13 @@ class TransactionData:
     nav: Decimal | float | None = None
     balance: Decimal | float | None = None
     dividend_rate: Decimal | float | None = None
+
+    def __post_init__(self):
+        if isinstance(self.amount, Decimal | float):
+            if self.units is None:
+                self.amount = HOLDINGS_CASHFLOW[self.type].value * self.amount
+            else:
+                self.amount = (1 if self.units > 0 else -1) * abs(self.amount)
 
 
 @dataclass(slots=True)
@@ -64,8 +85,8 @@ class CASData:
     statement_period: StatementPeriod
     schemes: list[Scheme]
     investor_info: InvestorInfo
-    cas_type: CASFileType
     file_type: FileType
+    file_version: FileVersion
 
 
 @dataclass(slots=True)
@@ -74,14 +95,14 @@ class PartialCASData:
 
     investor_info: InvestorInfo
     file_type: FileType
-    lines: list[str]
+    document_data: DocumentData
+    file_version: FileVersion
 
 
 @dataclass(slots=True)
 class ProcessedCASData:
-    cas_type: CASFileType
     schemes: list[Scheme]
-    statement_period: StatementPeriod
+    statement_period: StatementPeriod | None
 
 
 @dataclass(slots=True)

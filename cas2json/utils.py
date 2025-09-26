@@ -16,6 +16,7 @@ def get_statement_dates(parsed_lines: list[str], reg_exp: str) -> tuple[str | No
 
 
 def formatINR(value: str | None) -> Decimal | None:
+    """Helper to format amount related strings to Decimal."""
     if isinstance(value, str):
-        return Decimal(value.replace(",", "_").replace("(", "-"))
+        return Decimal(value.replace(",", "_").replace("(", "-").replace(")", ""))
     return None
