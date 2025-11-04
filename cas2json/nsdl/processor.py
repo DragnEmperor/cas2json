@@ -1,10 +1,12 @@
 import re
 from collections import defaultdict
 from decimal import Decimal
+from typing import Any
 
 from cas2json import patterns
 from cas2json.flags import MULTI_TEXT_FLAGS
-from cas2json.types import DematAccount, DematOwner, DocumentData, NSDLCASData, NSDLScheme, SchemeType, StatementPeriod
+from cas2json.nsdl.types import DematAccount, DematOwner, NSDLCASData, NSDLScheme
+from cas2json.types import DocumentData, SchemeType, StatementPeriod
 from cas2json.utils import format_values, get_statement_dates
 
 SCHEME_MAP = defaultdict(
@@ -36,7 +38,7 @@ class NSDLProcessor:
         return None
 
     @staticmethod
-    def extract_dp_client_id(line: str) -> tuple[str, str] | None:
+    def extract_dp_client_id(line: str) -> tuple[str | Any, ...] | None:
         """
         Extract DP ID and Client ID from the line if present.
 
@@ -49,7 +51,7 @@ class NSDLProcessor:
         return None
 
     @staticmethod
-    def extract_nsdl_cdsl_demat(line: str) -> tuple[str, int, Decimal] | None:
+    def extract_nsdl_cdsl_demat(line: str) -> tuple[str | None, int, Decimal | None] | None:
         """
         Extract NSDL or CDSL demat account details from the line if present.
 
@@ -61,11 +63,11 @@ class NSDLProcessor:
         if demat_match := re.search(patterns.DEMAT, line, MULTI_TEXT_FLAGS):
             ac_type, schemes_count, ac_balance = demat_match.groups()
             schemes_count, ac_balance = format_values((schemes_count, ac_balance))
-            return ac_type, int(schemes_count), ac_balance
+            return ac_type, int(schemes_count or 0), ac_balance
         return None
 
     @staticmethod
-    def extract_mf_demat(line: str) -> tuple[str, int, Decimal] | None:
+    def extract_mf_demat(line: str) -> tuple[int, int, Decimal | None] | None:
         """
         Extract Mutual Fund demat account details from the line if present.
 
@@ -75,7 +77,7 @@ class NSDLProcessor:
         """
         if demat_mf_match := re.search(patterns.DEMAT_MF_HEADER, line, MULTI_TEXT_FLAGS):
             folios, schemes_count, ac_balance = format_values(demat_mf_match.groups())
-            return folios, int(schemes_count), ac_balance
+            return int(folios or 0), int(schemes_count or 0), ac_balance
         return None
 
     @staticmethod
@@ -159,7 +161,7 @@ class NSDLProcessor:
             )
         return None
 
-    def process_nsdl_text(self, document_data: DocumentData) -> NSDLCASData:
+    def process_statement(self, document_data: DocumentData) -> NSDLCASData:
         """
         Process the text version of a NSDL pdf and return the processed data.
         """
@@ -222,9 +224,9 @@ class NSDLProcessor:
                             demats["MF Folios"] = current_demat
                         else:
                             current_demat = demats["MF Folios"]
-                            current_demat.folios += folios
+                            current_demat.folios += folios or 0
                             current_demat.schemes_count += schemes_count
-                            current_demat.units += ac_balance
+                            current_demat.units = (current_demat.units or Decimal(0)) + (ac_balance or Decimal(0))
                         continue
 
                 if "portfolio value trend" in line.lower():
@@ -258,4 +260,4 @@ class NSDLProcessor:
                     nsdl_scheme.client_id = current_demat.client_id
                     schemes.append(nsdl_scheme)
 
-        return NSDLCASData(statement_period=statement_period, accounts=list(demats.values()), schemes=schemes)
+        return NSDLCASData(accounts=list(demats.values()), schemes=schemes)
