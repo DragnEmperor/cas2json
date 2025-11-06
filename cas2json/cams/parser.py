@@ -108,7 +108,7 @@ class CAMSParser(BaseCASParser):
         for block in first_page_blocks:
             block_text = block[4].strip()
             if m := re.search(statement_regexp, block_text, MULTI_TEXT_FLAGS):
-                from_date, to_date = m.groups()
+                from_date, to_date = (m.groups() + (None,))[:2]  # NOQA
                 statement_period = StatementPeriod(from_=from_date, to=to_date)
                 break
 
