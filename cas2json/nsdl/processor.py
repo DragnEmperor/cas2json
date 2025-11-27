@@ -22,8 +22,8 @@ from typing import Any
 from cas2json import patterns
 from cas2json.flags import MULTI_TEXT_FLAGS
 from cas2json.nsdl.types import DematAccount, DematOwner, NSDLCASData, NSDLScheme
-from cas2json.types import DocumentData, SchemeType, StatementPeriod
-from cas2json.utils import format_values, get_statement_dates
+from cas2json.types import DocumentData, SchemeType, WordData
+from cas2json.utils import format_values, formatINR
 
 SCHEME_MAP = defaultdict(
     lambda: SchemeType.OTHER,
@@ -32,12 +32,58 @@ SCHEME_MAP = defaultdict(
         "Mutual Funds (M)": SchemeType.MUTUAL_FUND,
         "Corporate Bonds (C)": SchemeType.CORPORATE_BOND,
         "Preference Shares (P)": SchemeType.PREFERENCE_SHARES,
+        "Mutual Fund Folios (F)": SchemeType.MUTUAL_FUND,
     },
 )
+NSDL_STOCK_HEADERS = [("cost", (230, 280)), ("units", (310, 350)), ("nav", (405, 440)), ("market_value", (505, 550))]
+NSDL_MF_HEADERS = [("units", (285, 310)), ("nav", (390, 415)), ("market_value", (505, 550))]
+CDSL_HEADERS = [
+    ("units", (210, 265)),
+    ("safekeep", (285, 345)),
+    ("pledged", (370, 430)),
+    ("nav", (435, 485)),
+    ("market_value", (530, 555)),
+]
+MF_FOLIO_HEADERS = [
+    ("folio", (155, 190)),
+    ("units", (210, 235)),
+    ("cost", (265, 305)),
+    ("invested", (315, 360)),
+    ("nav", (370, 420)),
+    ("market_value", (425, 475)),
+    ("gain", (485, 530)),
+    ("annualized", (545, 590)),
+]
 
 
 class NSDLProcessor:
     __slots__ = ()
+
+    @staticmethod
+    def identify_values(
+        values: list[str],
+        holding: dict[str, None | str],
+        word_rects: list[WordData],
+        headers: list[tuple[str, tuple[int, int]]],
+        value_tolerance: tuple[float, float] = (5, 5),
+    ) -> dict[str, None | str]:
+        left_tol, right_tol = value_tolerance
+        if len(values) >= len(headers):
+            for header, val in zip(headers, values, strict=False):
+                holding[header[0]] = val
+        else:
+            for val in values:
+                val_rects = [(w[0], idx) for idx, w in enumerate(word_rects) if w[1] == val]
+                if not val_rects:
+                    continue
+                val_rect, idx = val_rects[0]
+                # Remove to avoid matching again
+                word_rects.pop(idx)
+                for header, rect in headers:
+                    if val_rect.x0 >= rect[0] - left_tol and val_rect.x1 <= rect[1] + right_tol:
+                        holding[header] = val
+                        break
+        return holding
 
     @staticmethod
     def extract_holders(line: str) -> DematOwner | None:
@@ -97,72 +143,42 @@ class NSDLProcessor:
         return None
 
     @staticmethod
-    def extract_mf_scheme(line: str) -> NSDLScheme | None:
-        """
-        Extract Scheme details for MF Folio from the line if present.
-        `Annualized Return (%)` is not always available making pattern match fail hence, is not parsed.
-
-        Supported line formats
-        ----------------------
-        - "INF109K01BF6 ICICI Prudential 123456 1234.793 12.3891 12345.00 12.6220 12345.39 1,354.39 5.42"
-
-        Order of details (in above):
-
-        ISIN, Scheme Name (incomplete), Folio, Units, Cost Per Unit, Total Cost, NAV, Market Value, Unrealized Profit/Loss
-        """
-        if scheme_match := re.search(patterns.MF_FOLIO_SCHEMES, line, MULTI_TEXT_FLAGS):
-            isin, name, folio, units, price, invested_value, nav, value, *_ = scheme_match.groups()
-            units, price, invested_value, nav, value = format_values((units, price, invested_value, nav, value))
-            name = re.sub(r"\s+", " ", name).strip()
-            return NSDLScheme(
-                isin=isin,
-                units=units,
-                nav=nav,
-                market_value=value,
-                scheme_type=SchemeType.MUTUAL_FUND,
-                cost=price,
-                scheme_name=name,
-                invested_value=invested_value,
-                folio=folio,
-            )
-        return None
-
-    @staticmethod
-    def extract_cdsl_scheme(line: str) -> NSDLScheme | None:
-        """
-        Extract Scheme details for CDSL demat account from the line if present.
-
-        Supported line formats
-        ----------------------
-        - "INE883F01010 AADHAR HOUSING FINANCE 0.000 0.000 0.000 502.75 0.00"
-
-        Order of details (in above):
-
-        ISIN, Scheme Name (incomplete), Units, SafeKeep Balance, Pledged Balance, NAV, Market Value
-        """
-        if scheme_match := re.search(patterns.CDSL_SCHEME, line, MULTI_TEXT_FLAGS):
-            isin, name, units, _, _, nav, value = scheme_match.groups()
-            units, nav, value = format_values((units, nav, value))
-            name = re.sub(r"\s+", " ", name).strip()
-            return NSDLScheme(isin=isin, scheme_name=name, units=units, nav=nav, market_value=value, cost=None)
-        return None
-
-    @staticmethod
-    def extract_nsdl_scheme(line: str) -> NSDLScheme | None:
+    def extract_scheme_details(
+        line: str, word_rects: list[WordData], scheme_type: SchemeType, ac_type: str | None
+    ) -> NSDLScheme | None:
         """
         Extract Scheme details for NSDL demat account from the line if present.
 
         Supported line formats
         ----------------------
         - "INE758E01017 JIO FINANCIAL SERVICES 10.00 5 311.70 1,558.50"
+        - "INE883F01010 AADHAR HOUSING FINANCE 0.000 0.000 0.000 502.75 0.00"
+        - "INF109K01BF6 ICICI Prudential 123456 1234.793 12.3891 12345.00 12.6220 12345.39 1,354.39 5.42"
 
         Order of details (in above):
 
-        ISIN, Scheme Name (incomplete), Cost per Unit, Units, NAV, Market Value
+        - ISIN, Scheme Name (incomplete), Cost per Unit, Units, NAV, Market Value
+        - ISIN, Scheme Name (incomplete), Units, SafeKeep Balance, Pledged Balance, NAV, Market Value
+        - ISIN, Scheme Name (incomplete), Folio, Units, Cost Per Unit, Total Cost, NAV, Market Value, Unrealized Profit/Loss, Annualised Return
         """
-        if scheme_match := re.search(patterns.NSDL_SCHEME, line, MULTI_TEXT_FLAGS):
-            isin, name, price, units, nav, value = scheme_match.groups()
-            price, units, nav, value = format_values((price, units, nav, value))
+        if scheme_match := re.search(patterns.SCHEME_DESCRIPTION, line, MULTI_TEXT_FLAGS):
+            isin, name, values, *_ = scheme_match.groups()
+            holding: dict[str, str | None] = {"cost": None, "units": None, "nav": None, "market_value": None}
+            values = re.findall(patterns.NUMBER, values.strip())
+            match ac_type:
+                case "NSDL" if scheme_type == SchemeType.MUTUAL_FUND:
+                    details = NSDLProcessor.identify_values(values, holding, word_rects, NSDL_MF_HEADERS)
+                case "NSDL" if scheme_type == SchemeType.STOCK:
+                    details = NSDLProcessor.identify_values(values, holding, word_rects, NSDL_STOCK_HEADERS)
+                case "CDSL":
+                    details = NSDLProcessor.identify_values(values, holding, word_rects, CDSL_HEADERS)
+                case "MF":
+                    details = NSDLProcessor.identify_values(values, holding, word_rects, MF_FOLIO_HEADERS, (10, 10))
+                case _:
+                    return None
+
+            price, units = format_values((details["cost"], details["units"]))
+            invested_value = formatINR(details.get("invested")) or (price * units if price and units else None)
             # TODO: name are mostly split into lines but there are cases of page breaks and thus there
             # will be lots of validations and checks to do to parse correct name
             name = re.sub(r"\s+", " ", name).strip()
@@ -171,9 +187,11 @@ class NSDLProcessor:
                 scheme_name=name,
                 units=units,
                 cost=price,
-                nav=nav,
-                market_value=value,
-                invested_value=price * units if price and units else None,
+                nav=formatINR(details["nav"]),
+                market_value=formatINR(details["market_value"]),
+                invested_value=invested_value,
+                scheme_type=scheme_type,
+                folio=details.get("folio"),
             )
         return None
 
@@ -181,7 +199,6 @@ class NSDLProcessor:
         """
         Process the text version of a NSDL pdf and return the processed data.
         """
-        statement_period: StatementPeriod | None = None
         current_demat: DematAccount | None = None
         schemes: list[NSDLScheme] = []
         scheme_type: SchemeType = SchemeType.OTHER
@@ -189,13 +206,8 @@ class NSDLProcessor:
         demats: dict[str, DematAccount] = {}
         process_demats: bool = True
         for page_data in document_data:
-            page_lines = [line for line, _ in page_data.lines_data]
-
-            if not statement_period:
-                from_date, to_date = get_statement_dates(page_lines, patterns.DEMAT_STATEMENT_PERIOD)
-                statement_period = StatementPeriod(from_=from_date, to=to_date)
-
-            for idx, line in enumerate(page_lines):
+            page_lines_data = list(page_data.lines_data)
+            for idx, (line, words_rect) in enumerate(page_lines_data):
                 # Do not parse transactions
                 if "Summary of Transaction" in line:
                     break
@@ -212,11 +224,11 @@ class NSDLProcessor:
                         ac_type, schemes_count, ac_balance = demat_details
                         dp_id, client_id = "", ""
                         if dp_details := self.extract_dp_client_id(
-                            page_lines[idx + 1] if idx + 1 < len(page_lines) else ""
+                            page_lines_data[idx + 1][0] if idx + 1 < len(page_lines_data) else ""
                         ):
                             dp_id, client_id = dp_details
                         current_demat = DematAccount(
-                            name=page_lines[idx - 1].strip(),
+                            name=page_lines_data[idx - 1][0].strip(),
                             ac_type=ac_type,
                             units=ac_balance,
                             dp_id=dp_id,
@@ -252,6 +264,9 @@ class NSDLProcessor:
                 if "NSDL Demat Account" in line or "CDSL Demat Account" in line:
                     current_demat = None
 
+                elif "Mutual Fund Folios (F)" in line:
+                    current_demat = demats.get("MF Folios")
+
                 elif dp_client_ids := self.extract_dp_client_id(line):
                     current_demat = demats.get(dp_client_ids[0] + dp_client_ids[1], None)
 
@@ -261,19 +276,9 @@ class NSDLProcessor:
                 elif any(i in line for i in SCHEME_MAP):
                     scheme_type = SCHEME_MAP[line.strip()]
 
-                elif mf_scheme := self.extract_mf_scheme(line):
-                    schemes.append(mf_scheme)
-
-                elif current_demat.ac_type == "CDSL" and (cdsl_scheme := self.extract_cdsl_scheme(line)):
-                    cdsl_scheme.scheme_type = scheme_type
-                    cdsl_scheme.dp_id = current_demat.dp_id
-                    cdsl_scheme.client_id = current_demat.client_id
-                    schemes.append(cdsl_scheme)
-
-                elif current_demat.ac_type == "NSDL" and (nsdl_scheme := self.extract_nsdl_scheme(line)):
-                    nsdl_scheme.scheme_type = scheme_type
-                    nsdl_scheme.dp_id = current_demat.dp_id
-                    nsdl_scheme.client_id = current_demat.client_id
-                    schemes.append(nsdl_scheme)
+                elif scheme := (self.extract_scheme_details(line, words_rect, scheme_type, current_demat.ac_type)):
+                    scheme.dp_id = current_demat.dp_id
+                    scheme.client_id = current_demat.client_id
+                    schemes.append(scheme)
 
         return NSDLCASData(accounts=list(demats.values()), schemes=schemes)
