@@ -28,16 +28,21 @@ SCHEME_MAP = defaultdict(
         "Mutual Fund Folios (F)": SchemeType.MUTUAL_FUND,
     },
 )
-NSDL_STOCK_HEADERS = [("cost", (230, 280)), ("units", (310, 350)), ("nav", (405, 440)), ("market_value", (505, 550))]
-NSDL_MF_HEADERS = [("units", (285, 310)), ("nav", (390, 415)), ("market_value", (505, 550))]
-CDSL_HEADERS = [
+NSDL_STOCK_HEADERS = (
+    ("cost", (230, 280)),
+    ("units", (310, 350)),
+    ("nav", (405, 440)),
+    ("market_value", (505, 550)),
+)
+NSDL_MF_HEADERS = (("units", (285, 310)), ("nav", (390, 415)), ("market_value", (505, 550)))
+CDSL_HEADERS = (
     ("units", (210, 265)),
     ("safekeep", (285, 345)),
     ("pledged", (370, 430)),
     ("nav", (435, 485)),
     ("market_value", (530, 555)),
-]
-MF_FOLIO_HEADERS = [
+)
+MF_FOLIO_HEADERS = (
     ("folio", (155, 190)),
     ("units", (210, 235)),
     ("cost", (265, 305)),
@@ -46,6 +51,7 @@ MF_FOLIO_HEADERS = [
     ("market_value", (425, 475)),
     ("gain", (485, 530)),
     ("annualized", (545, 590)),
-]
+)
+# Calculated wrt common NSDL document format
 BASE_PAGE_WIDTH = 595
 BASE_PAGE_HEIGHT = 842
