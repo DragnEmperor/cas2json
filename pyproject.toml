@@ -19,7 +19,7 @@ name = "cas2json"
 version = "1.0.2"
 authors = [{ name = "Aman Jagotra", email = "dragnemperor@gmail.com" }]
 maintainers = [
-  { name = "Aman Jagotra", email = "dragnemperor@gmail.com" },
+  {name = "Aman Jagotra", email = "dragnemperor@gmail.com"},
   {name = "Avishrant Sharma", email = "avishrants@gmail.com"},
   {name = "Sagar Chand Agarwal", email = "sagar.agarwal@beyondirr.tech"},
   {name = "Priyanshu Rajput", email = "priyanshu011109@gmail.com"}
@@ -41,9 +41,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/cas2json/cas2json"
-Repository = "https://github.com/cas2json/cas2json"
-Issues = "https://github.com/cas2json/cas2json/issues"
+Homepage = "https://github.com/BeyondIRR/cas2json"
+Repository = "https://github.com/BeyondIRR/cas2json"
+Issues = "https://github.com/BeyondIRR/cas2json/issues"
 
 [build-system]
 requires = ["hatchling"]

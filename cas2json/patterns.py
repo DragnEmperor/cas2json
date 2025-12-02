@@ -18,6 +18,7 @@
 
 DATE = r"(\d{2}-[A-Za-z]{3}-\d{4})"
 AMT = r"([(-]*\d[\d,.]+)\)*"
+NUMBER = r"([(-]*\d[\d,.]*)\)*"
 ISIN = r"[A-Z]{2}[0-9A-Z]{9}[0-9]{1}"
 # Summary Version
 SUMMARY_ROW = (
@@ -64,9 +65,7 @@ DP_CLIENT_ID = r"^DP\s*Id\s*:\s*(.+?)\s*Client\s*Id\s*:\s*(\d+)"
 DEMAT_MF_HEADER = r"Mutual Fund Folios\s+(\d+)\s+Folios\s+(\d+)\s+([\d,.]+)"
 DEMAT_HOLDER = r"([^\t\n0-9]+?)\s*\(PAN\s*:\s*(.+?)\)"
 # Scheme details
-NSDL_SCHEME = rf"^({ISIN})\s*(.+?)\s*{AMT}\s+([\d,.]+)\s+{AMT}\s+{AMT}$"
-CDSL_SCHEME = rf"^({ISIN})\s*(.+?)\s+" + rf"{AMT}\s+" * 4 + rf"{AMT}$"
-MF_FOLIO_SCHEMES = rf"^({ISIN})\s*(.+?)\s+(\d*)\s+" + rf"{AMT}\s+" * 5 + rf"{AMT}"
+SCHEME_DESCRIPTION = rf"^({ISIN})\s*(.+?)\s*((?:[(-]*\d[\d,.]*\s*)+)$"
 # Investor Details
 CAS_ID = r"[CAS|NSDL]\s+ID\s*:\s*(.+?)(?:\s|$)"
 INVESTOR_STATEMENT_DP = r"Statement\s+for\s+the\s+period|Your\s+demat\s+account\s+and\s+mutual\s+fund"
