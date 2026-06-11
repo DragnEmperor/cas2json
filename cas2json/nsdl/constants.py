@@ -1,18 +1,18 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright (C) 2025 BeyondIRR <https://beyondirr.com/>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2025-2026 BeyondIRR <https://beyondirr.com/>
 #
 # This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
+# it under the terms of the GNU Affero General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 from collections import defaultdict
 
@@ -24,23 +24,24 @@ SCHEME_MAP = defaultdict(
         "Equities (E)": SchemeType.STOCK,
         "Mutual Funds (M)": SchemeType.MUTUAL_FUND,
         "Corporate Bonds (C)": SchemeType.CORPORATE_BOND,
+        "Alternate Investment Fund (A)": SchemeType.ALTERNATE_INVESTMENT_FUND,
         "Preference Shares (P)": SchemeType.PREFERENCE_SHARES,
         "Mutual Fund Folios (F)": SchemeType.MUTUAL_FUND,
     },
 )
 NSDL_STOCK_HEADERS = (
     ("cost", (230, 280)),
-    ("units", (310, 350)),
+    ("units", (310, 355)),
     ("nav", (405, 440)),
-    ("market_value", (505, 550)),
+    ("market_value", (505, 555)),
 )
-NSDL_MF_HEADERS = (("units", (285, 310)), ("nav", (390, 415)), ("market_value", (505, 550)))
+NSDL_MF_HEADERS = (("units", (280, 315)), ("nav", (385, 420)), ("market_value", (500, 555)))
 CDSL_HEADERS = (
     ("units", (210, 265)),
     ("safekeep", (285, 345)),
     ("pledged", (370, 430)),
-    ("nav", (435, 485)),
-    ("market_value", (530, 555)),
+    ("nav", (435, 495)),
+    ("market_value", (525, 580)),
 )
 MF_FOLIO_HEADERS = (
     ("folio", (155, 190)),
