@@ -1,18 +1,18 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright (C) 2025 BeyondIRR <https://beyondirr.com/>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2025-2026 BeyondIRR <https://beyondirr.com/>
 #
 # This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
+# it under the terms of the GNU Affero General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 [project]
 name = "cas2json"
@@ -21,16 +21,14 @@ authors = [{ name = "Aman Jagotra", email = "dragnemperor@gmail.com" }]
 maintainers = [
   {name = "Aman Jagotra", email = "dragnemperor@gmail.com"},
   {name = "Avishrant Sharma", email = "avishrants@gmail.com"},
-  {name = "Sagar Chand Agarwal", email = "sagar.agarwal@beyondirr.tech"},
   {name = "Priyanshu Rajput", email = "priyanshu011109@gmail.com"}
 ]
 description = "Serialize financial statements to python objects"
 requires-python = ">=3.12"
 readme="README.md"
-license = "GPL-3.0-or-later"
-license-files = ["LICENSES/GPL-3.0-or-later.txt"]
+license = "AGPL-3.0-or-later"
 classifiers = [
-    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Operating System :: OS Independent",
@@ -56,7 +54,7 @@ path = "cas2json/__init__.py"
 include = [
   "cas2json",
   "README.md",
-  "LICENSES",
+  "LICENSE",
   "pyproject.toml",
 ]
 
