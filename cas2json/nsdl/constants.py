@@ -43,7 +43,7 @@ CDSL_HEADERS = (
     ("nav", (435, 495)),
     ("market_value", (525, 580)),
 )
-MF_FOLIO_HEADERS = (
+MF_FOLIO_HEADERS_1 = (
     ("folio", (155, 190)),
     ("units", (210, 235)),
     ("cost", (265, 305)),
@@ -52,6 +52,16 @@ MF_FOLIO_HEADERS = (
     ("market_value", (425, 475)),
     ("gain", (485, 530)),
     ("annualized", (545, 590)),
+)
+# For cases where annualized returns are not provided
+MF_FOLIO_HEADERS_2 = (
+    ("folio", (160, 200)),
+    ("units", (230, 260)),
+    ("cost", (280, 340)),
+    ("invested", (350, 400)),
+    ("nav", (410, 465)),
+    ("market_value", (470, 525)),
+    ("gain", (535, 585)),
 )
 # Calculated wrt common NSDL document format
 BASE_PAGE_WIDTH = 595
