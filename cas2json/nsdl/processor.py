@@ -15,6 +15,7 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import re
+from collections.abc import Sequence
 from decimal import Decimal
 from typing import Any
 
@@ -23,6 +24,7 @@ from cas2json.flags import MULTI_TEXT_FLAGS
 from cas2json.nsdl.constants import (
     BASE_PAGE_WIDTH,
     CDSL_HEADERS,
+    CORPORATE_BOND_HEADERS,
     MF_FOLIO_HEADERS_1,
     MF_FOLIO_HEADERS_2,
     NSDL_MF_HEADERS,
@@ -46,33 +48,34 @@ class NSDLProcessor:
 
     @staticmethod
     def identify_values(
-        values: list[str],
-        holding: dict[str, None | str],
         word_rects: list[WordData],
-        headers: list[tuple[str, tuple[int, int]]],
+        headers: Sequence[tuple[str, tuple[int, int]]],
+        isin: str,
         width_scale: float = 1.0,
         value_tolerance: tuple[float, float] = (5, 5),
-    ) -> dict[str, None | str]:
+    ) -> tuple[dict[str, str | None], str]:
+        """
+        Identify values by matching word positions against known header columns.
+        Returns the holding dict and the derived scheme name.
+        """
         left_tol, right_tol = value_tolerance
-        if len(values) >= len(headers):
-            for header, val in zip(headers, values, strict=False):
-                holding[header[0]] = val
-        else:
-            for val in values:
-                val_rects = [(w[0], idx) for idx, w in enumerate(word_rects) if w[1] == val]
-                if not val_rects:
-                    continue
-                val_rect, idx = val_rects[0]
-                # Remove to avoid matching again
-                word_rects.pop(idx)
-                for header, rect in headers:
-                    if (
-                        val_rect.x0 >= (rect[0] * width_scale) - left_tol
-                        and val_rect.x1 <= (rect[1] * width_scale) + right_tol
-                    ):
-                        holding[header] = val
+        holding: dict[str, str | None] = {}
+        name_words: list[str] = []
+        for rect, word in word_rects:
+            if word == isin:
+                continue
+            matched = False
+            if re.match(r"^[(-]*\d[\d,.]*\)*$", word):
+                for header_name, (h_left, h_right) in headers:
+                    if rect.x0 >= (h_left * width_scale) - left_tol and rect.x1 <= (h_right * width_scale) + right_tol:
+                        holding[header_name] = word
+                        matched = True
                         break
-        return holding
+            if not matched:
+                name_words.append(word)
+
+        name = " ".join(name_words)
+        return holding, name
 
     @staticmethod
     def identify_mf_folio_headers(line: str) -> tuple[tuple[str, tuple[int, int]], ...] | None:
@@ -178,16 +181,17 @@ class NSDLProcessor:
         - ISIN, Scheme Name (incomplete), Folio, Units, Cost Per Unit, Total Cost, NAV, Market Value, Unrealized Profit/Loss, Annualised Return (MF Folios)
         """
         if scheme_match := re.search(patterns.SCHEME_DESCRIPTION, line, MULTI_TEXT_FLAGS):
-            isin, name, values, *_ = scheme_match.groups()
-            holding: dict[str, str | None] = {"cost": None, "units": None, "nav": None, "market_value": None}
-            values = re.findall(patterns.NUMBER, values.strip())
+            isin = scheme_match.group(1)
             width_scale = page_width / BASE_PAGE_WIDTH
             match ac_type:
-                case "NSDL" if scheme_type == SchemeType.MUTUAL_FUND:
+                case "NSDL" if scheme_type in (SchemeType.MUTUAL_FUND, SchemeType.ALTERNATE_INVESTMENT_FUND):
                     headers = NSDL_MF_HEADERS
                     value_tolerance = (5, 5)
                 case "NSDL" if scheme_type == SchemeType.STOCK:
                     headers = NSDL_STOCK_HEADERS
+                    value_tolerance = (5, 5)
+                case "NSDL" if scheme_type == SchemeType.CORPORATE_BOND:
+                    headers = CORPORATE_BOND_HEADERS
                     value_tolerance = (5, 5)
                 case "CDSL":
                     headers = CDSL_HEADERS
@@ -198,13 +202,13 @@ class NSDLProcessor:
                 case _:
                     return None
 
-            details = NSDLProcessor.identify_values(values, holding, word_rects, headers, width_scale, value_tolerance)
+            details, name = NSDLProcessor.identify_values(word_rects, headers, isin, width_scale, value_tolerance)
 
             price, units = format_values((details.get("cost"), details.get("units")))
             invested_value = formatINR(details.get("invested")) or (price * units if price and units else None)
             # TODO: name are mostly split into lines but there are cases of page breaks and thus there
             # will be lots of validations and checks to do to parse correct name
-            name = re.sub(r"\s+", " ", name).strip()
+            name = re.sub(r"\s+", " ", name or "").strip()
             return DepositoryScheme(
                 isin=isin,
                 scheme_name=name,

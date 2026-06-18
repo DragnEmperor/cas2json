@@ -27,7 +27,9 @@ from cas2json.types import (
     FileType,
     FileVersion,
     InvestorInfo,
+    LineData,
     StatementPeriod,
+    WordData,
 )
 
 
@@ -55,6 +57,10 @@ class NSDLParser(BaseCASParser):
             )
 
         raise CASParseError("Unable to parse investor data")
+
+    @staticmethod
+    def recover_lines(words: list[WordData], tolerance: int = 4, vertical_factor: int = 4) -> LineData:
+        return BaseCASParser.recover_lines(words, tolerance=tolerance, vertical_factor=vertical_factor)
 
     def extract_statement_metadata(self) -> CASMetaData:
         page_options = {"flags": TEXT_EXTRACTION_FLAGS, "sort": True, "option": "blocks"}
